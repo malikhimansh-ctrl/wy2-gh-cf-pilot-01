@@ -1,0 +1,39 @@
+name: WY2 frozen release-candidate package verification (no deployment)
+on:
+  push:
+    branches:
+      - pilot/static-site-v1
+    paths:
+      - .github/workflows/wy2-release-package-check.yml
+permissions:
+  contents: read
+jobs:
+  verify-static-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Checkout frozen approved-intent candidate SHA
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: 5369848faf063eaa0f1d778021d5395f84094284
+          persist-credentials: false
+      - name: Verify protected branch, source, and strict file package
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha=5369848faf063eaa0f1d778021d5395f84094284
+          test "$(git rev-parse HEAD)" = "$sha"
+          tip="$(git ls-remote origin refs/heads/release/pilot-initial | awk '{print $1}')"
+          test "$tip" = "$sha"
+          test "$(git rev-parse HEAD:index.html)" = eaafb137e86890345427957c0361080d221530cd
+          test "$(git rev-parse HEAD:404.html)" = 869a0bf464a3d64db8c7421d8ee7a8f673dd3d67
+          grep -Fq 'WY2-GH-CF-RELEASE-01' release-probe-01.html
+          mkdir -p dist
+          install -m 0644 index.html 404.html release-probe-01.html dist/
+          test "$(find dist -type f | wc -l)" -eq 3
+          test ! -f dist/preview-probe-01.html
+          if [ "$(git rev-parse HEAD)" = 3164770a9e07b298c593c420414222fdc1db1580 ]; then
+            echo 'FAIL: candidate unexpectedly equals rollback SHA' >&2
+            exit 9
+          fi
+          echo 'PASS: candidate pinned SHA, protected branch, unchanged survivors, marker, strict package'
