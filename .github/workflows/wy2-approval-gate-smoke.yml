@@ -1,0 +1,23 @@
+name: WY2 trusted environment approval smoke (no deployment)
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/wy2-approval-gate-smoke.yml
+permissions: {}
+jobs:
+  manual-approval:
+    name: Prove required reviewer blocks job execution
+    environment:
+      name: wy2-production-gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Demonstrate gate passed without any credentials or deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "main"
+          test "$GITHUB_EVENT_NAME" = "push"
+          printf 'WY2-GATE-TEST-SUCCESS; no secrets, no deployment\n'
