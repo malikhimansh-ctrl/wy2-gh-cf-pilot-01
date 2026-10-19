@@ -77,5 +77,5 @@ jobs:
         uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_PAGES_TOKEN }}
-          accountId: 01b022cd3839737c69d20945a180217e
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy dist --project-name=wy2-gh-cf-pilot-01 --branch=release/pilot-initial --commit-hash=${{ needs.validate-request.outputs.approved_sha }}
