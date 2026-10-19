@@ -1,0 +1,42 @@
+name: WY2 fixed-SHA guard preflight (no deployment)
+on:
+  push:
+    branches:
+      - pilot/static-site-v1
+    paths:
+      - .github/workflows/wy2-release-sha-preflight.yml
+permissions:
+  contents: read
+jobs:
+  sha-guard:
+    name: Validate pinned checkout and reject another SHA
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Checkout immutable candidate commit
+        uses: actions/checkout@v4
+        with:
+          ref: 46962c6e25d9f2dde2cba0b215dccf9eae251c35
+          persist-credentials: false
+      - name: Positive and negative approval-SHA assertions
+        shell: bash
+        env:
+          APPROVED_TEST_SHA: 46962c6e25d9f2dde2cba0b215dccf9eae251c35
+          REJECTED_TEST_SHA: 3164770a9e07b298c593c420414222fdc1db1580
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          verify_fixed_sha() {
+            local requested="$1"
+            [[ "$requested" =~ ^[0-9a-f]{40}$ ]] || return 2
+            [[ "$actual" == "$requested" ]] || return 3
+          }
+          verify_fixed_sha "$APPROVED_TEST_SHA"
+          printf 'PASS: exact pinned checkout %s\n' "$actual"
+          if verify_fixed_sha "$REJECTED_TEST_SHA"; then
+            printf 'FAIL: guard admitted an unapproved SHA\n' >&2
+            exit 7
+          fi
+          printf 'PASS: mismatched SHA rejected\n'
+          test "$GITHUB_REF_NAME" = "pilot/static-site-v1"
+          printf 'PASS: no credentials, production deployment or artifact\n'
