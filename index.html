@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="Disposable synthetic site for the Wytewall 2.0 GitHub to Cloudflare delivery test.">
+  <title>WY2 | Disposable delivery pilot</title>
+  <style>
+    :root { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color-scheme: light; }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: #162637; background: #f7f9fc; line-height: 1.6; }
+    a { color: #0758ad; }
+    a:focus-visible { outline: 3px solid #0079e8; outline-offset: 4px; }
+    .wrap { width: min(100% - 2rem, 950px); margin-inline: auto; }
+    header { background: #0b263e; color: #fff; }
+    header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; padding-block: 1rem; }
+    header a { color: #fff; }
+    nav { display: flex; flex-wrap: wrap; gap: 1.15rem; }
+    main { padding-block: clamp(2rem, 6vw, 5rem); }
+    h1 { font-size: clamp(2rem, 5vw, 3.25rem); line-height: 1.15; }
+    .card { background: #fff; border: 1px solid #ccd8e2; border-radius: 12px; padding: clamp(1.2rem, 4vw, 2rem); margin-block: 1.5rem; }
+    .tag { display: inline-block; padding: .25rem .65rem; border-radius: 99px; background: #d9eeff; font-weight: 600; font-size: .85rem; }
+    footer { border-top: 1px solid #ccd8e2; padding: 1.5rem 0; }
+    @media (max-width: 520px) { header .wrap { align-items: flex-start; flex-direction: column; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <strong>WY2 Delivery Pilot</strong>
+      <nav aria-label="Main navigation">
+        <a href="#overview">Overview</a>
+        <a href="#checks">Test checks</a>
+      </nav>
+    </div>
+  </header>
+  <main id="overview" class="wrap">
+    <span class="tag">Synthetic content · No client data</span>
+    <h1>GitHub → Cloudflare controlled delivery test</h1>
+    <p>This disposable informational page is exclusively for checking preview deployments, release isolation, rendered quality and rollback.</p>
+    <section id="checks" class="card" aria-labelledby="checks-heading">
+      <h2 id="checks-heading">Acceptance checks</h2>
+      <ul>
+        <li>Responsive rendering at desktop and mobile widths.</li>
+        <li>Navigation links to Overview and Test checks.</li>
+        <li>Unapproved branch edits never change the production website.</li>
+        <li>Deployment identity, approved commit and rollback are verified separately.</li>
+      </ul>
+    </section>
+    <p><strong>Environment label:</strong> pilot-site-v1. This label is not proof of a deployed commit SHA.</p>
+  </main>
+  <footer><div class="wrap">WYTEWALL 2.0 · Disposable public test only · Not a client website</div></footer>
+</body>
+</html>
