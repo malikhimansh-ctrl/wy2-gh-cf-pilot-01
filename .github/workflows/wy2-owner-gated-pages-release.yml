@@ -19,7 +19,7 @@ jobs:
       approved_sha: ${{ steps.verify.outputs.approved_sha }}
     steps:
       - name: Read protected release intent
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # verified v4 commit
         with:
           persist-credentials: false
       - name: Reject unapproved or moved reference
@@ -51,7 +51,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout exactly the verified release commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # verified v4 commit
         with:
           ref: ${{ needs.validate-request.outputs.approved_sha }}
           persist-credentials: false
@@ -74,7 +74,7 @@ jobs:
           test "$(find dist -type f | wc -l)" -ge 2
           printf 'PACKAGE-PASS: exact SHA, allowlisted static files only\n'
       - name: Publish to fixed existing Cloudflare Pages project
-        uses: cloudflare/wrangler-action@v4
+        uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # verified v4 commit
         with:
           apiToken: ${{ secrets.CLOUDFLARE_PAGES_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
