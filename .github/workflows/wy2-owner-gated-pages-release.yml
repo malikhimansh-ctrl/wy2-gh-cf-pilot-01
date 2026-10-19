@@ -36,6 +36,8 @@ jobs:
           git fetch --no-tags --depth=1 origin "$sha"
           git cat-file -e "$sha:index.html"
           git cat-file -e "$sha:404.html"
+          git cat-file -e "$sha:release-probe-01.html"
+          git show "$sha:release-probe-01.html" | grep -Fq "WY2-GH-CF-RELEASE-01"
           printf 'approved_sha=%s\n' "$sha" >> "$GITHUB_OUTPUT"
           printf 'PRECHECK-PASS for exact protected branch SHA %s\n' "$sha"
 
@@ -65,12 +67,10 @@ jobs:
           [[ "$(git rev-parse HEAD)" == "$APPROVED_SHA" ]] || { echo 'Checkout SHA mismatch'; exit 5; }
           tip="$(git ls-remote origin refs/heads/release/pilot-initial | awk '{print $1}')"
           [[ "$tip" == "$APPROVED_SHA" ]] || { echo 'Release branch changed after approval'; exit 6; }
-          test -f index.html && test -f 404.html
+          test -f index.html && test -f 404.html && test -f release-probe-01.html
+          grep -Fq "WY2-GH-CF-RELEASE-01" release-probe-01.html
           mkdir -p dist
-          install -m 0644 index.html 404.html dist/
-          if [ -f preview-probe-01.html ]; then
-            install -m 0644 preview-probe-01.html dist/
-          fi
+          install -m 0644 index.html 404.html release-probe-01.html dist/
           test "$(find dist -type f | wc -l)" -ge 2
           printf 'PACKAGE-PASS: exact SHA, allowlisted static files only\n'
       - name: Publish to fixed existing Cloudflare Pages project
