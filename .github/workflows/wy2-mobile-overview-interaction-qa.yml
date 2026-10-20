@@ -1,0 +1,77 @@
+name: WY2 mobile Overview interaction browser QA (read-only)
+on:
+  push:
+    branches: [pilot/static-site-v1]
+    paths: [.github/workflows/wy2-mobile-overview-interaction-qa.yml]
+permissions: {}
+jobs:
+  mobile-overview-browser:
+    name: Verify Overview click in production and preview browsers
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Find existing Chrome and install small browser driver
+        shell: bash
+        run: |
+          set -euo pipefail
+          browser="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
+          test -n "$browser" || { echo 'BLOCKER: no preinstalled Chrome'; exit 21; }
+          echo "BROWSER_BIN=$browser" >> "$GITHUB_ENV"
+          npm install --no-fund --no-audit --prefix "$RUNNER_TEMP/wy2-browser" puppeteer-core@24.22.0
+          echo "PUPPETEER_PATH=$RUNNER_TEMP/wy2-browser/node_modules/puppeteer-core" >> "$GITHUB_ENV"
+      - name: Exercise live Overview navigation at 390 px
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/wy2-overview.cjs" <<'JS'
+          const puppeteer = require(process.env.PUPPETEER_PATH);
+          (async () => {
+            const browser = await puppeteer.launch({
+              executablePath: process.env.BROWSER_BIN,
+              headless: true,
+              args: ['--no-sandbox', '--disable-dev-shm-usage']
+            });
+            const sites = [
+              ['production', 'https://wy2-gh-cf-pilot-01.pages.dev/'],
+              ['preview', 'https://ac108aaf.wy2-gh-cf-pilot-01.pages.dev/']
+            ];
+            try {
+              for (const [name, url] of sites) {
+                const page = await browser.newPage();
+                await page.setViewport({width: 390, height: 844, deviceScaleFactor: 1, isMobile: true, hasTouch: true});
+                const response = await page.goto(url, {waitUntil: 'networkidle2', timeout: 35000});
+                if (response.status() !== 200) throw new Error(name+': homepage HTTP '+response.status());
+                const selector = 'a[href="#overview"]';
+                if (!(await page.$(selector)) || !(await page.$('a[href="#checks"]')) || !(await page.$('#overview')) || !(await page.$('#checks'))) {
+                  throw new Error(name+': missing navigation or targets');
+                }
+                await page.click('a[href="#checks"]');
+                await page.waitForFunction(() => location.hash === '#checks', {timeout: 6000});
+                await new Promise(r => setTimeout(r, 300));
+                const before = await page.evaluate(() => window.scrollY);
+                await page.click(selector);
+                await page.waitForFunction(() => location.hash === '#overview', {timeout: 6000});
+                await new Promise(r => setTimeout(r, 300));
+                const state = await page.evaluate(() => {
+                  const target = document.getElementById('overview').getBoundingClientRect();
+                  return {
+                    hash: location.hash,
+                    scrollY: window.scrollY,
+                    viewportHeight: innerHeight,
+                    scrollWidth: document.documentElement.scrollWidth,
+                    innerWidth: innerWidth,
+                    targetTop: target.top,
+                    targetBottom: target.bottom
+                  };
+                });
+                if (!(state.scrollY < before)) throw new Error(name+': Overview did not scroll back; checksY='+before+' overviewY='+state.scrollY);
+                if (!(state.targetBottom > 0 && state.targetTop < state.viewportHeight)) throw new Error(name+': Overview target not visible '+JSON.stringify(state));
+                if (state.scrollWidth > state.innerWidth+1) throw new Error(name+': mobile horizontal overflow '+JSON.stringify(state));
+                console.log('WY2-MOBILE-OVERVIEW-PASS '+name+' checks_scrollY='+before+' overview_scrollY='+state.scrollY+' targetTop='+state.targetTop+' viewport=390');
+                await page.close();
+              }
+              console.log('WY2-PRODUCTION-AND-PREVIEW-OVERVIEW-PASS');
+            } finally { await browser.close(); }
+          })().catch(err => { console.error('FAIL: '+err.stack); process.exitCode=1; });
+          JS
+          node "$RUNNER_TEMP/wy2-overview.cjs"

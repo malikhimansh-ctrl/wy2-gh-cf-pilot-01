@@ -1,0 +1,51 @@
+name: WY2 public production rollback QA (read-only, no deploy)
+on:
+  push:
+    branches: [pilot/static-site-v1]
+    paths: [.github/workflows/wy2-live-rollback-readonly-qa.yml]
+permissions: {}
+jobs:
+  verify-restored-production:
+    name: Verify public rollback without credentials or deployment
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Confirm restored production matches original immutable deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          production="https://wy2-gh-cf-pilot-01.pages.dev"
+          original="https://e73f14c5.wy2-gh-cf-pilot-01.pages.dev"
+          later="https://14620a0a.wy2-gh-cf-pilot-01.pages.dev"
+          marker="WY2-GH-CF-RELEASE-01"
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+          fetch() {
+            curl -fLsS --retry 0 --connect-timeout 8 --max-time 20 \
+              -H 'Cache-Control: no-cache' "$1" -o "$2"
+          }
+          get_status() {
+            curl -sSL --retry 0 --connect-timeout 8 --max-time 20 \
+              -H 'Cache-Control: no-cache' -o "$2" -w '%{http_code}' "$1"
+          }
+          fetch "$production/?wy2_rollback_qa=39375464723" "$tmp/prodhome"
+          fetch "$original/?wy2_rollback_qa=39375464723" "$tmp/orighome"
+          grep -Fq 'GitHub' "$tmp/prodhome"
+          grep -Fq 'Cloudflare' "$tmp/prodhome"
+          cmp -s "$tmp/prodhome" "$tmp/orighome" || { echo 'FAIL: prod home differs from original immutable home'; exit 11; }
+          echo 'PASS: public production homepage equals original immutable deployment'
+          status="$(get_status "$production/release-probe-01.html?wy2_rollback_qa=39375464723" "$tmp/prodmarker")"
+          test "$status" = "404" || { echo "FAIL: release marker path status $status (expected 404)"; exit 12; }
+          if grep -Fq "$marker" "$tmp/prodmarker"; then echo 'FAIL: released marker still in production'; exit 13; fi
+          echo 'PASS: production release-only marker route restored to 404'
+          status="$(get_status "$original/release-probe-01.html?wy2_rollback_qa=39375464723" "$tmp/origmarker")"
+          test "$status" = "404" || { echo "FAIL: original marker path status $status (expected 404)"; exit 14; }
+          cmp -s "$tmp/prodmarker" "$tmp/origmarker" || { echo 'FAIL: production 404 body differs from original'; exit 15; }
+          echo 'PASS: public production 404 page equals original immutable 404'
+          status="$(get_status "$production/preview-probe-01.html?wy2_rollback_qa=39375464723" "$tmp/preview")"
+          test "$status" = "404" || { echo "FAIL: preview-only route status $status"; exit 16; }
+          echo 'PASS: preview-only marker stays absent from production'
+          fetch "$later/release-probe-01.html?wy2_rollback_qa=39375464723" "$tmp/later"
+          grep -Fq "$marker" "$tmp/later" || { echo 'FAIL: later immutable deployment no longer contains release marker'; exit 17; }
+          echo 'PASS: prior published candidate remains independently addressable'
+          echo 'WY2-ROLLBACK-READONLY-QA-PASS'

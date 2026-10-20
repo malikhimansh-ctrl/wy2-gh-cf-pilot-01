@@ -1,0 +1,20 @@
+name: WY2 Actions capacity smoke (non-deploying)
+on:
+  push:
+    branches:
+      - pilot/static-site-v1
+    paths:
+      - .github/workflows/wy2-actions-capacity-smoke.yml
+permissions:
+  contents: read
+jobs:
+  no-deployment:
+    name: Verify hosted runner without secrets or artifacts
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Confirm feature branch and free-runner execution
+        shell: bash
+        run: |
+          test "$GITHUB_REF_NAME" = "pilot/static-site-v1"
+          printf 'WY2-ACTIONS-SMOKE-PASS\n'
