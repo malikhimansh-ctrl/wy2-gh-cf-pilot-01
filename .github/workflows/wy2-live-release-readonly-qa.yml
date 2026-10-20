@@ -1,0 +1,41 @@
+name: WY2 public Pages live release QA (read-only, no deploy)
+on:
+  push:
+    branches: [pilot/static-site-v1]
+    paths: [.github/workflows/wy2-live-release-readonly-qa.yml]
+permissions: {}
+jobs:
+  check-public-pages:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Inspect public production and immutable release responses
+        shell: bash
+        run: |
+          set -euo pipefail
+          production="https://wy2-gh-cf-pilot-01.pages.dev"
+          immutable="https://14620a0a.wy2-gh-cf-pilot-01.pages.dev"
+          baseline="https://e73f14c5.wy2-gh-cf-pilot-01.pages.dev"
+          marker="WY2-GH-CF-RELEASE-01"
+          preview_marker="WY2-GH-CF-PREVIEW-01"
+          temp="$(mktemp -d)"
+          trap 'rm -rf "$temp"' EXIT
+          for host in "$production" "$immutable"; do
+            echo "Checking public site: $host"
+            curl -fLsS --retry 0 --connect-timeout 8 --max-time 20 "$host/release-probe-01.html?release_qa=39375039176" -o "$temp/marker"
+            grep -Fq "$marker" "$temp/marker" || { echo "FAIL: release marker missing"; exit 11; }
+            echo "PASS: release marker present"
+            curl -fLsS --retry 0 --connect-timeout 8 --max-time 20 "$host/?release_qa=39375039176" -o "$temp/index"
+            grep -Fq 'GitHub' "$temp/index" || { echo "FAIL: homepage missing expected content"; exit 12; }
+            grep -Fq 'Cloudflare' "$temp/index" || { echo "FAIL: homepage missing Cloudflare heading"; exit 13; }
+            echo "PASS: homepage returned expected text"
+            status="$(curl -sSL --retry 0 --connect-timeout 8 --max-time 20 -o "$temp/absence" -w '%{http_code}' "$host/preview-probe-01.html?release_qa=39375039176")"
+            test "$status" = "404" || { echo "FAIL: preview marker route status $status, expected 404"; exit 14; }
+            if grep -Fq "$preview_marker" "$temp/absence"; then echo "FAIL: preview marker leaked"; exit 15; fi
+            echo "PASS: preview-only route 404"
+          done
+          status="$(curl -sSL --retry 0 --connect-timeout 8 --max-time 20 -o "$temp/baseline" -w '%{http_code}' "$baseline/release-probe-01.html?release_qa=39375039176")"
+          test "$status" = "404" || { echo "FAIL: original production immutable URL has release page: $status"; exit 16; }
+          if grep -Fq "$marker" "$temp/baseline"; then echo "FAIL: old deployment has release marker"; exit 17; fi
+          echo "PASS: original immutable rollback target retains 404"
+          echo "WY2-PUBLIC-PRODUCTION-RELEASE-QA-PASS"
